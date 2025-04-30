@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Фитнес Квест</title>
+  <style>
+    @keyframes hologram-bg {
+      0% { background-position: 0% 0%; }
+      100% { background-position: 100% 100%; }
+    }
+    
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: auto;
+      background: 
+        /* Основной градиентный фон */
+        linear-gradient(135deg, rgba(0,5,15,0.95) 0%, rgba(0,20,40,0.95) 100%),
+        
+        /* Вертикальные линии */
+        linear-gradient(to right, rgba(0,247,255,0.05) 1px, transparent 1px),
+        
+        /* Горизонтальные линии */
+        linear-gradient(to bottom, rgba(0,247,255,0.05) 1px, transparent 1px);
+        
+      background-size: 
+        cover,     /* Для основного фона */
+        20px 20px, /* Размер сетки вертикальных линий */
+        20px 20px; /* Размер сетки горизонтальных линий */
+        
+      animation: hologram-bg 30s linear infinite;
+      color: #e0e0e0;
+    }
+    
+    .scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        to bottom,
+        transparent 95%,
+        rgba(0,247,255,0.1) 95%,
+        rgba(0,247,255,0.1) 96%,
+        transparent 96%
+      );
+      background-size: 100% 10px;
+      animation: scanline 3s linear infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    .glitch {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="10" height="10" fill="%2300f7ff" opacity="0.1"/></svg>');
+      opacity: 0.1;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .container {
+      background: rgba(0, 0, 0, 0.85);
+      border: 2px solid #00f7ff;
+      border-radius: 10px;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      box-shadow: 0 0 30px rgba(0, 247, 255, 0.5);
+      min-height: 500px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    /* Остальные стили остаются без изменений */
+    h1 {
+      color: #00f7ff;
+      text-shadow: 0 0 15px rgba(0, 247, 255, 0.7);
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .menu {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+      padding-bottom: 10px;
+      position: relative;
+    }
+    .menu::before {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+      box-shadow: 0 0 15px #00f7ff;
+    }
+    .menu-button {
+      background: transparent;
+      color: #00f7ff;
+      border: 1px solid #00f7ff;
+      padding: 12px 25px;
+      margin: 0 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      text-shadow: 0 0 5px #00f7ff;
+      transition: all 0.3s;
+      font-size: 1em;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0, 247, 255, 0.3);
+    }
+    .menu-button::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        to bottom right,
+        rgba(0, 247, 255, 0),
+        rgba(0, 247, 255, 0.1),
+        rgba(0, 247, 255, 0.3),
+        rgba(0, 247, 255, 0.1),
+        rgba(0, 247, 255, 0)
+      );
+      transform: rotate(45deg);
+      animation: hologram 4s infinite linear;
+    }
+    .menu-button:hover, .menu-button.active {
+      background: rgba(0, 247, 255, 0.1);
+      box-shadow: 0 0 25px rgba(0, 247, 255, 0.7);
+      transform: translateY(-2px);
+    }
+    .menu-button.active::after {
+      content: "";
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      height: 2px;
+      background: #00f7ff;
+      box-shadow: 0 0 15px #00f7ff;
+    }
+    @keyframes hologram {
+      0% { transform: rotate(45deg) translate(-30%, -30%); }
+      100% { transform: rotate(45deg) translate(30%, 30%); }
+    }
+    .tab {
+      display: none;
+      animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tab.active {
+      display: block;
+    }
+    .quest {
+      background: rgba(10, 25, 40, 0.8);
+      border: 1px solid #00f7ff;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 15px 0;
+      box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .quest::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+      box-shadow: 0 0 15px #00f7ff;
+    }
+    .quest::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+      box-shadow: 0 0 15px #00f7ff;
+    }
+    .progress-bar {
+      height: 20px;
+      background: #1a2a3a;
+      border-radius: 10px;
+      margin: 15px 0;
+      overflow: hidden;
+      border: 1px solid #00f7ff;
+      box-shadow: 0 0 10px rgba(0, 247, 255, 0.3) inset;
+    }
+    .progress {
+      height: 100%;
+      background: linear-gradient(to right, #00f7ff, #00ff9d);
+      width: 0%;
+      transition: width 0.5s;
+      box-shadow: 0 0 15px rgba(0, 247, 255, 0.5);
+    }
+    button {
+      background: linear-gradient(to bottom, #006a6e, #003336);
+      color: #fff;
+      border: none;
+      padding: 12px 25px;
+      margin: 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      text-shadow: 0 0 5px #00f7ff;
+      box-shadow: 0 0 15px rgba(0, 247, 255, 0.3);
+      transition: all 0.3s;
+      font-size: 1em;
+      position: relative;
+      overflow: hidden;
+    }
+    button::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        to bottom right,
+        rgba(0, 247, 255, 0),
+        rgba(0, 247, 255, 0.1),
+        rgba(0, 247, 255, 0.3),
+        rgba(0, 247, 255, 0)
+      );
+      transform: rotate(45deg);
+      animation: hologram 4s infinite linear;
+    }
+    button:hover {
+      background: linear-gradient(to bottom, #008a8e, #005356);
+      box-shadow: 0 0 25px rgba(0, 247, 255, 0.7);
+      transform: translateY(-3px);
+    }
+    #stats {
+      display: flex;
+      justify-content: space-around;
+      margin: 25px 0;
+      flex-wrap: wrap;
+    }
+    .stat {
+      background: rgba(0, 60, 63, 0.5);
+      padding: 12px;
+      border-radius: 5px;
+      margin: 5px;
+      border: 1px solid #00f7ff;
+      min-width: 120px;
+      box-shadow: 0 0 15px rgba(0, 247, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+      box-shadow: 0 0 10px #00f7ff;
+    }
+    .achievement {
+      background: rgba(0, 247, 255, 0.15);
+      border: 1px solid #00f7ff;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px 0;
+      display: none;
+      text-align: left;
+      box-shadow: 0 0 15px rgba(0, 247, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .achievement::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+      box-shadow: 0 0 10px #00f7ff;
+    }
+    .exercise-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .exercise-title {
+      color: #00ff9d;
+      margin-bottom: 5px;
+      font-size: 1.1em;
+      text-shadow: 0 0 10px rgba(0, 247, 255, 0.5);
+    }
+    .exercise-value {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #00f7ff;
+      text-shadow: 0 0 15px rgba(0, 247, 255, 0.7);
+    }
+    .level-up {
+      animation: pulse 1s infinite;
+    }
+    .main-menu {
+      text-align: center;
+      padding: 50px 0;
+    }
+    .main-menu h2 {
+      color: #00ff9d;
+      margin-bottom: 30px;
+      text-shadow: 0 0 15px rgba(0, 247, 255, 0.5);
+      font-size: 1.8em;
+    }
+    .main-menu-button {
+      background: rgba(0, 60, 63, 0.3);
+      color: #00f7ff;
+      border: 1px solid #00f7ff;
+      padding: 15px 30px;
+      margin: 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1.2em;
+      text-shadow: 0 0 10px #00f7ff;
+      box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+      transition: all 0.3s;
+      min-width: 250px;
+      display: inline-block;
+      position: relative;
+      overflow: hidden;
+    }
+    .main-menu-button::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        to bottom right,
+        rgba(0, 247, 255, 0),
+        rgba(0, 247, 255, 0.1),
+        rgba(0, 247, 255, 0.3),
+        rgba(0, 247, 255, 0)
+      );
+      transform: rotate(45deg);
+      animation: hologram 4s infinite linear;
+    }
+    .main-menu-button:hover {
+      background: rgba(0, 247, 255, 0.1);
+      box-shadow: 0 0 30px rgba(0, 247, 255, 0.7);
+      transform: translateY(-5px);
+      color: #00ff9d;
+    }
+    .complete-btn {
+      background: linear-gradient(to bottom, #00aa6e, #00663d);
+      animation: pulseBtn 2s infinite;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: rgba(0, 60, 63, 0.3);
+      border: 1px solid #00f7ff;
+      border-radius: 5px;
+      padding: 15px;
+      box-shadow: 0 0 15px rgba(0, 247, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+      box-shadow: 0 0 10px #00f7ff;
+    }
+    .stat-card-title {
+      color: #00ff9d;
+      margin-bottom: 10px;
+      font-size: 1em;
+      text-shadow: 0 0 5px rgba(0, 247, 255, 0.5);
+    }
+    .stat-card-value {
+      font-size: 1.4em;
+      font-weight: bold;
+      color: #00f7ff;
+      text-shadow: 0 0 10px rgba(0, 247, 255, 0.7);
+    }
+    @keyframes pulseBtn {
+      0% { box-shadow: 0 0 15px rgba(0, 255, 170, 0.5); }
+      50% { box-shadow: 0 0 30px rgba(0, 255, 170, 0.9); }
+      100% { box-shadow: 0 0 15px rgba(0, 255, 170, 0.5); }
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px rgba(0, 247, 255, 0.5); }
+      50% { box-shadow: 0 0 25px rgba(0, 247, 255, 0.9); }
+      100% { box-shadow: 0 0 10px rgba(0, 247, 255, 0.5); }
+    }
+    .hologram-line {
+      position: absolute;
+      height: 1px;
+      width: 100%;
+      background: linear-gradient(90deg, transparent, #00f7ff, transparent);
+      box-shadow: 0 0 15px #00f7ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="scanlines"></div>
+  <div class="glitch"></div>
+  
+  <div class="container">
+    <h1>⚡ Фитнес Квест 6.0 ⚡</h1>
+    
+    <div class="menu">
+      <div class="hologram-line" style="top: 0;"></div>
+      <button class="menu-button" onclick="openTab('main')">Главное меню</button>
+      <div class="hologram-line" style="bottom: 0;"></div>
+    </div>
+    
+    <!-- Главное меню -->
+    <div id="main" class="tab active">
+      <div class="main-menu">
+        <h2>Тренировочный терминал активирован</h2>
+        <button class="main-menu-button" onclick="openTab('quest')">Ежедневные задания</button>
+        <button class="main-menu-button" onclick="openTab('achievements')">Достижения</button>
+        
+        <div id="quick-stats" style="margin-top: 40px;">
+          <h3>Быстрая статистика</h3>
+          <div id="stats">
+            <div class="stat">🚀 Уровень: <span class="exercise-value" id="level-main">1</span></div>
+            <div class="stat">⚡ Опыт: <span class="exercise-value" id="xp-main">0</span>/<span id="maxXp-main">250</span></div>
+            <div class="stat">🏆 Дней подряд: <span class="exercise-value" id="streak-main">0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Ежедневные задания -->
+    <div id="quest" class="tab">
+      <div class="quest">
+        <h3>🎯 Ежедневные задания</h3>
+        <p>Выполни все задания для повышения уровня!</p>
+        
+        <div class="exercise-container">
+          <div class="exercise-title">Отжимания: <span id="push-ups">0</span>/<span id="push-ups-target">100</span></div>
+          <div class="progress-bar">
+            <div class="progress" id="push-ups-bar"></div>
+          </div>
+          <button onclick="addReps('push-ups', 10)">+10 Отжиманий</button>
+        </div>
+        
+        <div class="exercise-container">
+          <div class="exercise-title">Скручивания: <span id="sit-ups">0</span>/<span id="sit-ups-target">100</span></div>
+          <div class="progress-bar">
+            <div class="progress" id="sit-ups-bar"></div>
+          </div>
+          <button onclick="addReps('sit-ups', 10)">+10 Скручиваний</button>
+        </div>
+        
+        <div class="exercise-container">
+          <div class="exercise-title">Приседания: <span id="squats">0</span>/<span id="squats-target">100</span></div>
+          <div class="progress-bar">
+            <div class="progress" id="squats-bar"></div>
+          </div>
+          <button onclick="addReps('squats', 10)">+10 Приседаний</button>
+        </div>
+        
+        <div class="exercise-container">
+          <div class="exercise-title">Бег: <span id="running">0</span>/<span id="running-target">10</span> км</div>
+          <div class="progress-bar">
+            <div class="progress" id="running-bar"></div>
+          </div>
+          <button onclick="addReps('running', 1)">+1 км Бега</button>
+        </div>
+        
+        <div class="exercise-container">
+          <div class="exercise-title">Планка: <span id="plank">0</span>/<span id="plank-target">1</span> мин</div>
+          <div class="progress-bar">
+            <div class="progress" id="plank-bar"></div>
+          </div>
+          <button onclick="addReps('plank', 1)">+1 мин Планки</button>
+        </div>
+      </div>
+
+      <button id="complete-btn" class="complete-btn" onclick="completeOrResetQuest()">🏁 Завершить квест</button>
+    </div>
+    
+    <!-- Достижения -->
+    <div id="achievements" class="tab">
+      <h3>🏆 Достижения и статистика</h3>
+      
+      <div id="stats">
+        <div class="stat">🚀 Уровень: <span class="exercise-value" id="level-ach">1</span></div>
+        <div class="stat">⚡ Всего опыта: <span class="exercise-value" id="total-xp">0</span></div>
+        <div class="stat">🏆 Макс. серия: <span class="exercise-value" id="max-streak">0</span></div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-title">Всего отжиманий</div>
+          <div class="stat-card-value" id="total-pushups">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Всего скручиваний</div>
+          <div class="stat-card-value" id="total-situps">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Всего приседаний</div>
+          <div class="stat-card-value" id="total-squats">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Всего пробежал (км)</div>
+          <div class="stat-card-value" id="total-running">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Всего в планке (мин)</div>
+          <div class="stat-card-value" id="total-plank">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Всего тренировок</div>
+          <div class="stat-card-value" id="total-workouts">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Среднее отжиманий/день</div>
+          <div class="stat-card-value" id="avg-pushups">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Среднее приседаний/день</div>
+          <div class="stat-card-value" id="avg-squats">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Рекорд отжиманий</div>
+          <div class="stat-card-value" id="max-pushups">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Рекорд приседаний</div>
+          <div class="stat-card-value" id="max-squats">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Рекорд бега (км)</div>
+          <div class="stat-card-value" id="max-running">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-title">Рекорд планки (мин)</div>
+          <div class="stat-card-value" id="max-plank">0</div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">🏅 Достижения</h3>
+      <div id="achievements-list">
+        <div class="achievement" id="day1">🏅 Достижение: Первая миссия выполнена! (День 1)</div>
+        <div class="achievement" id="day3">🏅 Достижение: Серия из 3 дней!</div>
+        <div class="achievement" id="day7">🏅 Достижение: Неделя тренировок!</div>
+        <div class="achievement" id="level5">🏅 Достижение: Достигнут 5 уровень!</div>
+        <div class="achievement" id="level10">🏅 Достижение: Достигнут 10 уровень!</div>
+        <div class="achievement" id="pushup500">🏅 Достижение: 500 отжиманий всего!</div>
+        <div class="achievement" id="squat500">🏅 Достижение: 500 приседаний всего!</div>
+        <div class="achievement" id="run50">🏅 Достижение: 50 км бега всего!</div>
+        <div class="achievement" id="plank10">🏅 Достижение: 10 минут в планке всего!</div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="sound-complete" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
+  <audio id="sound-levelup" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3"></audio>
+
+  <script>
+    // Игровые данные
+    let stats = {
+      pushUps: 0,
+      sitUps: 0,
+      squats: 0,
+      running: 0,
+      plank: 0,
+      level: 1,
+      xp: 0,
+      totalXp: 0,
+      maxXp: 250,
+      streak: 0,
+      maxStreak: 0,
+      lastCompleted: null,
+      targets: {
+        pushUps: 100,
+        sitUps: 100,
+        squats: 100,
+        running: 10,
+        plank: 1
+      },
+      totals: {
+        pushUps: 0,
+        sitUps: 0,
+        squats: 0,
+        running: 0,
+        plank: 0,
+        workouts: 0
+      },
+      records: {
+        pushUps: 0,
+        sitUps: 0,
+        squats: 0,
+        running: 0,
+        plank: 0
+      }
+    };
+
+    // Переключение вкладок
+    function openTab(tabName) {
+      const tabs = document.getElementsByClassName('tab');
+      for (let i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove('active');
+      }
+      document.getElementById(tabName).classList.add('active');
+      
+      updateDisplay();
+    }
+
+    // Загрузка сохранённых данных
+    function loadStats() {
+      const saved = localStorage.getItem('fitnessRPG');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Обновляем цели в соответствии с уровнем
+        const levelDiff = parsed.level - 1;
+        stats = {
+          ...parsed,
+          targets: {
+            pushUps: 100 + (20 * levelDiff),
+            sitUps: 100 + (20 * levelDiff),
+            squats: 100 + (20 * levelDiff),
+            running: 10,
+            plank: 1 + levelDiff
+          },
+          maxXp: 250 + (250 * (parsed.level - 1))
+        };
+        
+        // Инициализация, если нет новых полей
+        if (!stats.totals) {
+          stats.totals = {
+            pushUps: 0,
+            sitUps: 0,
+            squats: 0,
+            running: 0,
+            plank: 0,
+            workouts: 0
+          };
+        }
+        if (!stats.records) {
+          stats.records = {
+            pushUps: 0,
+            sitUps: 0,
+            squats: 0,
+            running: 0,
+            plank: 0
+          };
+        }
+        
+        updateDisplay();
+        checkStreak();
+      }
+    }
+
+    // Сохранение данных
+    function saveStats() {
+      localStorage.setItem('fitnessRPG', JSON.stringify(stats));
+    }
+
+    // Проверка серии дней
+    function checkStreak() {
+      const today = new Date().toDateString();
+      const last = stats.lastCompleted ? new Date(stats.lastCompleted).toDateString() : null;
+      
+      if (last === today) return; // Уже сегодня выполняли
+      
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (last === yesterday.toDateString()) {
+        stats.streak++;
+        if (stats.streak > stats.maxStreak) {
+          stats.maxStreak = stats.streak;
+        }
+      } else if (last !== today && last !== null) {
+        stats.streak = 0;
+      }
+      
+      // Разблокировка достижений
+      checkAchievements();
+    }
+
+    // Проверка достижений
+    function checkAchievements() {
+      if (stats.streak >= 1) document.getElementById('day1').style.display = 'block';
+      if (stats.streak >= 3) document.getElementById('day3').style.display = 'block';
+      if (stats.streak >= 7) document.getElementById('day7').style.display = 'block';
+      if (stats.level >= 5) document.getElementById('level5').style.display = 'block';
+      if (stats.level >= 10) document.getElementById('level10').style.display = 'block';
+      if (stats.totals.pushUps >= 500) document.getElementById('pushup500').style.display = 'block';
+      if (stats.totals.squats >= 500) document.getElementById('squat500').style.display = 'block';
+      if (stats.totals.running >= 50) document.getElementById('run50').style.display = 'block';
+      if (stats.totals.plank >= 10) document.getElementById('plank10').style.display = 'block';
+    }
+
+    // Добавление повторений
+    function addReps(type, amount) {
+      const statKey = type === 'push-ups' ? 'pushUps' : 
+                     type === 'sit-ups' ? 'sitUps' :
+                     type === 'squats' ? 'squats' :
+                     type === 'running' ? 'running' : 'plank';
+      
+      stats[statKey] += amount;
+      const target = stats.targets[statKey];
+      if (stats[statKey] > target) stats[statKey] = target;
+      
+      // Обновление рекордов
+      if (stats[statKey] > stats.records[statKey]) {
+        stats.records[statKey] = stats[statKey];
+      }
+      
+      updateDisplay();
+      
+      // Звук выполнения
+      if (stats[statKey] % (type === 'running' || type === 'plank' ? 1 : 10) === 0) {
+        document.getElementById('sound-complete').play();
+      }
+    }
+
+    // Завершение или сброс квеста
+    function completeOrResetQuest() {
+      const allCompleted = stats.pushUps >= stats.targets.pushUps &&
+                         stats.sitUps >= stats.targets.sitUps &&
+                         stats.squats >= stats.targets.squats &&
+                         stats.running >= stats.targets.running &&
+                         stats.plank >= stats.targets.plank;
+      
+      if (allCompleted) {
+        // Награда за выполнение
+        stats.xp += 100;
+        stats.totalXp += 100;
+        
+        // Обновление общей статистики
+        stats.totals.pushUps += stats.pushUps;
+        stats.totals.sitUps += stats.sitUps;
+        stats.totals.squats += stats.squats;
+        stats.totals.running += stats.running;
+        stats.totals.plank += stats.plank;
+        stats.totals.workouts++;
+        
+        if (stats.xp >= stats.maxXp) {
+          levelUp();
+        }
+        
+        stats.lastCompleted = new Date().toISOString();
+        checkStreak();
+        saveStats();
+        updateDisplay();
+        alert('🏆 Миссия выполнена! Ты получил 100 опыта!');
+        
+        // Автоматический сброс после завершения
+        resetDay();
+      } else {
+        // Если квест не выполнен, предлагаем сброс
+        if (confirm('Квест не выполнен! Сбросить прогресс за день?')) {
+          resetDay();
+        }
+      }
+    }
+
+    // Повышение уровня
+    function levelUp() {
+      stats.level++;
+      stats.xp -= stats.maxXp;
+      stats.maxXp += 250;
+      
+      // Увеличиваем цели для упражнений (кроме бега)
+      stats.targets.pushUps += 20;
+      stats.targets.sitUps += 20;
+      stats.targets.squats += 20;
+      stats.targets.plank += 1;
+      
+      document.getElementById('sound-levelup').play();
+      alert(`🎉 Уровень UP! Теперь ты ${stats.level} уровня! Цели увеличены!`);
+      
+      // Анимация
+      const levelElement = document.getElementById('level');
+      if (levelElement) levelElement.classList.add('level-up');
+      setTimeout(() => {
+        if (levelElement) levelElement.classList.remove('level-up');
+      }, 3000);
+    }
+
+    // Сброс дня
+    function resetDay() {
+      stats.pushUps = 0;
+      stats.sitUps = 0;
+      stats.squats = 0;
+      stats.running = 0;
+      stats.plank = 0;
+      updateDisplay();
+    }
+
+    // Обновление интерфейса
+    function updateDisplay() {
+      // Упражнения
+      document.getElementById('push-ups').textContent = stats.pushUps;
+      document.getElementById('push-ups-target').textContent = stats.targets.pushUps;
+      document.getElementById('push-ups-bar').style.width = `${(stats.pushUps / stats.targets.pushUps) * 100}%`;
+      
+      document.getElementById('sit-ups').textContent = stats.sitUps;
+      document.getElementById('sit-ups-target').textContent = stats.targets.sitUps;
+      document.getElementById('sit-ups-bar').style.width = `${(stats.sitUps / stats.targets.sitUps) * 100}%`;
+      
+      document.getElementById('squats').textContent = stats.squats;
+      document.getElementById('squats-target').textContent = stats.targets.squats;
+      document.getElementById('squats-bar').style.width = `${(stats.squats / stats.targets.squats) * 100}%`;
+      
+      document.getElementById('running').textContent = stats.running;
+      document.getElementById('running-target').textContent = stats.targets.running;
+      document.getElementById('running-bar').style.width = `${(stats.running / stats.targets.running) * 100}%`;
+      
+      document.getElementById('plank').textContent = stats.plank;
+      document.getElementById('plank-target').textContent = stats.targets.plank;
+      document.getElementById('plank-bar').style.width = `${(stats.plank / stats.targets.plank) * 100}%`;
+      
+      // Статистика (обновляем во всех вкладках)
+      const levelElements = ['level', 'level-main', 'level-ach'];
+      const xpElements = ['xp', 'xp-main'];
+      const maxXpElements = ['maxXp', 'maxXp-main'];
+      const streakElements = ['streak', 'streak-main'];
+      
+      levelElements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = stats.level;
+      });
+      
+      xpElements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = stats.xp;
+      });
+      
+      maxXpElements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = stats.maxXp;
+      });
+      
+      streakElements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = stats.streak;
+      });
+      
+      document.getElementById('total-xp').textContent = stats.totalXp;
+      document.getElementById('max-streak').textContent = stats.maxStreak;
+      
+      // Общая статистика
+      document.getElementById('total-pushups').textContent = stats.totals.pushUps;
+      document.getElementById('total-situps').textContent = stats.totals.sitUps;
+      document.getElementById('total-squats').textContent = stats.totals.squats;
+      document.getElementById('total-running').textContent = stats.totals.running;
+      document.getElementById('total-plank').textContent = stats.totals.plank;
+      document.getElementById('total-workouts').textContent = stats.totals.workouts;
+      
+      // Средние значения
+      const avgPushups = stats.totals.workouts > 0 ? Math.round(stats.totals.pushUps / stats.totals.workouts) : 0;
+      const avgSquats = stats.totals.workouts > 0 ? Math.round(stats.totals.squats / stats.totals.workouts) : 0;
+      
+      document.getElementById('avg-pushups').textContent = avgPushups;
+      document.getElementById('avg-squats').textContent = avgSquats;
+      
+      // Рекорды
+      document.getElementById('max-pushups').textContent = stats.records.pushUps;
+      document.getElementById('max-squats').textContent = stats.records.squats;
+      document.getElementById('max-running').textContent = stats.records.running;
+      document.getElementById('max-plank').textContent = stats.records.plank;
+      
+      // Обновляем кнопку завершения
+      const completeBtn = document.getElementById('complete-btn');
+      const allCompleted = stats.pushUps >= stats.targets.pushUps &&
+                         stats.sitUps >= stats.targets.sitUps &&
+                         stats.squats >= stats.targets.squats &&
+                         stats.running >= stats.targets.running &&
+                         stats.plank >= stats.targets.plank;
+      
+      if (allCompleted) {
+        completeBtn.textContent = "🏁 Завершить квест";
+        completeBtn.classList.add('complete-btn');
+      } else {
+        completeBtn.textContent = "♻️ Сбросить день";
+        completeBtn.classList.remove('complete-btn');
+      }
+      
+      saveStats();
+    }
+
+    // Напоминание
+    function checkNotification() {
+      const now = new Date();
+      const hours = now.getHours();
+      if (hours >= 18 && !localStorage.getItem('notifiedToday')) {
+        if (Notification.permission === 'granted') {
+          new Notification('⚡ Внимание, оперативник!', {
+            body: 'Твоя миссия ждёт! Выполни все задания для повышения уровня!',
+            icon: 'https://static.tildacdn.com/tild3264-6531-4236-a438-383933623632/hud-ui-gui-futuristi.jpg'
+          });
+        }
+        localStorage.setItem('notifiedToday', 'true');
+      }
+    }
+
+    // Инициализация
+    window.onload = function() {
+      loadStats();
+      
+      // Запрос на уведомления
+      if (Notification.permission !== 'granted') {
+        Notification.requestPermission();
+      }
+      
+      // Сброс уведомления в 00:00
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      setTimeout(() => {
+        localStorage.removeItem('notifiedToday');
+      }, midnight - now);
+      
+      // Проверка каждые 10 минут
+      setInterval(checkNotification, 600000);
+      
+      // Показываем главное меню при загрузке
+      openTab('main');
+    };
+  </script>
+</body>
+</html>
